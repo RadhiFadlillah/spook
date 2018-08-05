@@ -7,7 +7,6 @@ Spook is a simple CMS for creating a simple blog. Built using Go and Vue.js. Ins
 - Minimalistic and only has the bare necessary function for creating and managing a blog.
 - Easy to install, and can be installed on any server;
 - Doesn't require any external dependency;
-- Supports multi language contents;
 - Has search feature;
 - Easy and flexible to theme;
 
