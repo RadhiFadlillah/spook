@@ -1,0 +1,6 @@
+# Exclude config file
+.vscode/
+
+# Exclude generated file
+spook*
+dev/
