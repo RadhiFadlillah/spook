@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"net/url"
 	"os"
 	fp "path/filepath"
 	"strings"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/spf13/cobra"
@@ -32,11 +34,25 @@ var (
 		Args:  cobra.ExactArgs(1),
 		Run:   newThemeCmdHandler,
 	}
+
+	newPageCmd = &cobra.Command{
+		Use:   "page [title]",
+		Short: "Create a new page with specified title",
+		Args:  cobra.ExactArgs(1),
+		Run:   newPageCmdHandler,
+	}
+
+	newPostCmd = &cobra.Command{
+		Use:   "post [title]",
+		Short: "Create a new post with specified title",
+		Args:  cobra.ExactArgs(1),
+		Run:   newPostCmdHandler,
+	}
 )
 
 func init() {
 	newSiteCmd.Flags().Bool("force", false, "Init inside non-empty directory")
-	newCmd.AddCommand(newSiteCmd, newThemeCmd)
+	newCmd.AddCommand(newSiteCmd, newThemeCmd, newPageCmd, newPostCmd)
 }
 
 func newSiteCmdHandler(cmd *cobra.Command, args []string) {
@@ -97,16 +113,17 @@ func newSiteCmdHandler(cmd *cobra.Command, args []string) {
 
 	// Write config file
 	configPath := fp.Join(path, "config.toml")
-	configFile, err := os.OpenFile(configPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
+	configFile, err := os.Create(configPath)
 	if err != nil {
 		cError.Println("Error:", err)
 		return
 	}
 	defer configFile.Close()
 
-	err = toml.NewEncoder(configFile).Encode(&map[string]string{
-		"baseURL": baseURL,
-		"title":   title})
+	err = toml.NewEncoder(configFile).Encode(&Config{
+		BaseURL:    baseURL,
+		Title:      title,
+		Pagination: 10})
 	if err != nil {
 		cError.Println("Error:", err)
 		return
@@ -127,15 +144,15 @@ func newThemeCmdHandler(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// Open config file in current working dir
-	mapConfig := map[string]string{}
-	_, err = toml.DecodeFile("config.toml", &mapConfig)
+	// Make sure valid config file exists in current working dir
+	config := Config{}
+	_, err = toml.DecodeFile("config.toml", &config)
 	if err != nil {
 		cError.Println("Error:", err)
 		return
 	}
 
-	if _, exist := mapConfig["baseURL"]; !exist {
+	if config.BaseURL == "" {
 		cError.Println("Error: No base URL set in configuration file")
 		return
 	}
@@ -162,7 +179,148 @@ func newThemeCmdHandler(cmd *cobra.Command, args []string) {
 	os.MkdirAll(fp.Join(path, "css"), os.ModePerm)
 	os.MkdirAll(fp.Join(path, "js"), os.ModePerm)
 	createFile(fp.Join(path, "index.html"))
+	createFile(fp.Join(path, "list.html"))
 	createFile(fp.Join(path, "page.html"))
 	createFile(fp.Join(path, "post.html"))
 	createFile(fp.Join(path, "404.html"))
+
+	// Finish
+	fmt.Print("Congratulations! Your new theme is created in ")
+	cBold.Println(absPath)
+}
+
+func newPageCmdHandler(cmd *cobra.Command, args []string) {
+	// Read arguments
+	title := args[0]
+
+	// Make sure valid config file exists in current working dir
+	config := Config{}
+	_, err := toml.DecodeFile("config.toml", &config)
+	if err != nil {
+		cError.Println("Error:", err)
+		return
+	}
+
+	if config.BaseURL == "" {
+		cError.Println("Error: No base URL set in configuration file")
+		return
+	}
+
+	// Prepare directory name with max length 80 character
+	dirPath := ""
+	for _, word := range strings.Fields(title) {
+		dirPath += strings.ToLower(word) + "-"
+		if len(dirPath) >= 80 {
+			break
+		}
+	}
+
+	// Create unique directory name
+	dirPath = fp.Join("page", dirPath[:len(dirPath)-1])
+	for {
+		if info, err := os.Stat(dirPath); err == nil && info.IsDir() {
+			dirPath += "-1"
+			continue
+		} else {
+			break
+		}
+	}
+
+	// Create new directory and index file for the page
+	os.MkdirAll(dirPath, os.ModePerm)
+	indexFile, err := os.Create(fp.Join(dirPath, "index.md"))
+	if err != nil {
+		cError.Println("Error:", err)
+		return
+	}
+	defer indexFile.Close()
+
+	// Write page's metadata
+	w := bufio.NewWriter(indexFile)
+	fmt.Fprintln(w, "+++")
+	fmt.Fprintln(w, `Title = "`+title+`"`)
+	fmt.Fprintln(w, "+++")
+	w.Flush()
+
+	// Finish
+	absPath, err := fp.Abs(dirPath)
+	if err != nil {
+		cError.Println("Error:", err)
+		return
+	}
+
+	fmt.Print("Congratulations! Your new page is created in ")
+	cBold.Println(absPath)
+}
+
+func newPostCmdHandler(cmd *cobra.Command, args []string) {
+	// Read arguments
+	title := args[0]
+
+	// Make sure valid config file exists in current working dir
+	config := Config{}
+	_, err := toml.DecodeFile("config.toml", &config)
+	if err != nil {
+		cError.Println("Error:", err)
+		return
+	}
+
+	if config.BaseURL == "" {
+		cError.Println("Error: No base URL set in configuration file")
+		return
+	}
+
+	// Prepare directory name with max length 100 character
+	now := time.Now()
+	dirPath := now.Format("2006-01-02-")
+	for _, word := range strings.Fields(title) {
+		dirPath += strings.ToLower(word) + "-"
+		if len(dirPath) >= 100 {
+			break
+		}
+	}
+
+	// Create unique directory name
+	dirPath = fp.Join("post", dirPath[:len(dirPath)-1])
+	for {
+		if info, err := os.Stat(dirPath); err == nil && info.IsDir() {
+			dirPath += "-1"
+			continue
+		} else {
+			break
+		}
+	}
+
+	// Create new directory and index file for the page
+	os.MkdirAll(dirPath, os.ModePerm)
+	indexFile, err := os.Create(fp.Join(dirPath, "index.md"))
+	if err != nil {
+		cError.Println("Error:", err)
+		return
+	}
+	defer indexFile.Close()
+
+	// Write post's metadata
+	strNow := now.Format("2006-01-02 15:04:05 -0700")
+
+	w := bufio.NewWriter(indexFile)
+	fmt.Fprintln(w, "+++")
+	fmt.Fprintln(w, `Title = "`+title+`"`)
+	fmt.Fprintln(w, `Excerpt = ""`)
+	fmt.Fprintln(w, `CreatedAt = "`+strNow+`"`)
+	fmt.Fprintln(w, `UpdatedAt = "`+strNow+`"`)
+	fmt.Fprintln(w, `Category = ""`)
+	fmt.Fprintln(w, `Tags = []`)
+	fmt.Fprintln(w, "+++")
+	w.Flush()
+
+	// Finish
+	absPath, err := fp.Abs(dirPath)
+	if err != nil {
+		cError.Println("Error:", err)
+		return
+	}
+
+	fmt.Print("Congratulations! Your new post is created in ")
+	cBold.Println(absPath)
 }

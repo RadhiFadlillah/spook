@@ -1,8 +1,6 @@
 package main
 
 import (
-	"os"
-
 	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -25,9 +23,4 @@ func main() {
 	if err := spookCmd.Execute(); err != nil {
 		logrus.Fatalln(err)
 	}
-}
-
-func createFile(path string) {
-	f, _ := os.Create(path)
-	defer f.Close()
 }
