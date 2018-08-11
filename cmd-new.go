@@ -84,13 +84,14 @@ func newSiteCmdHandler(cmd *cobra.Command, args []string) {
 	}
 
 	// Get website name and base url from user
-	var title, baseURL string
+	reader := bufio.NewReader(os.Stdin)
 	fmt.Println("Please input data for new website")
 	fmt.Println()
 
 	cBold.Print("Website title : ")
-	fmt.Scanln(&title)
+	tempBytes, _, _ := reader.ReadLine()
 
+	title := string(tempBytes)
 	title = strings.TrimSpace(title)
 	if title == "" {
 		cError.Println("Error: Website title must not empty")
@@ -98,12 +99,18 @@ func newSiteCmdHandler(cmd *cobra.Command, args []string) {
 	}
 
 	cBold.Print("Base URL      : ")
-	fmt.Scanln(&baseURL)
+	tempBytes, _, _ = reader.ReadLine()
+
+	baseURL := string(tempBytes)
 	if _, err = url.ParseRequestURI(baseURL); err != nil {
 		cError.Println("Error: Base URL must be an absolute URL path")
 		return
 	}
-	fmt.Println()
+
+	cBold.Print("Website owner : ")
+	tempBytes, _, _ = reader.ReadLine()
+	owner := string(tempBytes)
+	owner = strings.TrimSpace(owner)
 
 	// Create subdirectory
 	os.MkdirAll(fp.Join(path, "static"), os.ModePerm)
@@ -123,6 +130,7 @@ func newSiteCmdHandler(cmd *cobra.Command, args []string) {
 	err = toml.NewEncoder(configFile).Encode(&Config{
 		BaseURL:    baseURL,
 		Title:      title,
+		Owner:      owner,
 		Pagination: 10})
 	if err != nil {
 		cError.Println("Error:", err)
@@ -130,8 +138,10 @@ func newSiteCmdHandler(cmd *cobra.Command, args []string) {
 	}
 
 	// Finish
+	fmt.Println()
 	fmt.Print("Congratulations! Your new Spook site is created in ")
 	cBold.Println(absPath)
+	fmt.Println("Don't forget to check your config file and choose your theme.")
 }
 
 func newThemeCmdHandler(cmd *cobra.Command, args []string) {
@@ -178,6 +188,7 @@ func newThemeCmdHandler(cmd *cobra.Command, args []string) {
 	os.MkdirAll(fp.Join(path, "res"), os.ModePerm)
 	os.MkdirAll(fp.Join(path, "css"), os.ModePerm)
 	os.MkdirAll(fp.Join(path, "js"), os.ModePerm)
+	createFile(fp.Join(path, "_base.html"))
 	createFile(fp.Join(path, "index.html"))
 	createFile(fp.Join(path, "list.html"))
 	createFile(fp.Join(path, "page.html"))
@@ -228,7 +239,7 @@ func newPageCmdHandler(cmd *cobra.Command, args []string) {
 
 	// Create new directory and index file for the page
 	os.MkdirAll(dirPath, os.ModePerm)
-	indexFile, err := os.Create(fp.Join(dirPath, "index.md"))
+	indexFile, err := os.Create(fp.Join(dirPath, "_index.md"))
 	if err != nil {
 		cError.Println("Error:", err)
 		return
@@ -238,7 +249,7 @@ func newPageCmdHandler(cmd *cobra.Command, args []string) {
 	// Write page's metadata
 	w := bufio.NewWriter(indexFile)
 	fmt.Fprintln(w, "+++")
-	fmt.Fprintln(w, `Title = "`+title+`"`)
+	toml.NewEncoder(w).Encode(&Page{Title: title})
 	fmt.Fprintln(w, "+++")
 	w.Flush()
 
@@ -293,7 +304,7 @@ func newPostCmdHandler(cmd *cobra.Command, args []string) {
 
 	// Create new directory and index file for the page
 	os.MkdirAll(dirPath, os.ModePerm)
-	indexFile, err := os.Create(fp.Join(dirPath, "index.md"))
+	indexFile, err := os.Create(fp.Join(dirPath, "_index.md"))
 	if err != nil {
 		cError.Println("Error:", err)
 		return
@@ -302,15 +313,19 @@ func newPostCmdHandler(cmd *cobra.Command, args []string) {
 
 	// Write post's metadata
 	strNow := now.Format("2006-01-02 15:04:05 -0700")
+	metadata := Post{
+		Title:     title,
+		Excerpt:   "",
+		CreatedAt: strNow,
+		UpdatedAt: strNow,
+		Category:  "",
+		Tags:      []string{},
+		Author:    config.Owner,
+	}
 
 	w := bufio.NewWriter(indexFile)
 	fmt.Fprintln(w, "+++")
-	fmt.Fprintln(w, `Title = "`+title+`"`)
-	fmt.Fprintln(w, `Excerpt = ""`)
-	fmt.Fprintln(w, `CreatedAt = "`+strNow+`"`)
-	fmt.Fprintln(w, `UpdatedAt = "`+strNow+`"`)
-	fmt.Fprintln(w, `Category = ""`)
-	fmt.Fprintln(w, `Tags = []`)
+	toml.NewEncoder(w).Encode(&metadata)
 	fmt.Fprintln(w, "+++")
 	w.Flush()
 

@@ -19,7 +19,7 @@ func main() {
 	}
 
 	// Execute
-	spookCmd.AddCommand(newCmd)
+	spookCmd.AddCommand(newCmd, serverCmd)
 	if err := spookCmd.Execute(); err != nil {
 		logrus.Fatalln(err)
 	}
