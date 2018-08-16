@@ -1,6 +1,7 @@
 package renderer
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
 	"io"
@@ -11,6 +12,8 @@ import (
 	"strings"
 
 	"github.com/RadhiFadlillah/spook/model"
+	"github.com/tdewolff/minify"
+	"github.com/tdewolff/minify/html"
 	blackfriday "gopkg.in/russross/blackfriday.v2"
 )
 
@@ -33,6 +36,7 @@ type Renderer struct {
 	Posts      []model.Post
 	Tags       []model.Group
 	Categories []model.Group
+	Minimize   bool
 }
 
 var funcsMap = template.FuncMap{
@@ -98,7 +102,7 @@ func (rd Renderer) RenderFrontPage(pageNumber int, dst io.Writer) error {
 		return err
 	}
 
-	return tpl.ExecuteTemplate(dst, activeTemplate, &frontPage)
+	return rd.executeTemplate(tpl, dst, activeTemplate, &frontPage)
 }
 
 // RenderList renders list template.
@@ -187,7 +191,7 @@ func (rd Renderer) RenderList(listType ListType, groupName string, pageNumber in
 		return err
 	}
 
-	return tpl.ExecuteTemplate(dst, "list.html", &list)
+	return rd.executeTemplate(tpl, dst, "list.html", &list)
 }
 
 // RenderPage renders page template.
@@ -219,7 +223,7 @@ func (rd Renderer) RenderPage(page model.Page, dst io.Writer) error {
 	}
 
 	content = removeMetadata(content)
-	htmlContent := blackfriday.Run(content)
+	html := blackfriday.Run(content)
 
 	// Prepare layout
 	baseLayout := Layout{
@@ -233,7 +237,7 @@ func (rd Renderer) RenderPage(page model.Page, dst io.Writer) error {
 	pageLayout := Page{
 		Layout:    baseLayout,
 		Thumbnail: page.Thumbnail,
-		HTML:      template.HTML(htmlContent),
+		HTML:      template.HTML(html),
 	}
 
 	// Execute templates
@@ -242,7 +246,7 @@ func (rd Renderer) RenderPage(page model.Page, dst io.Writer) error {
 		return err
 	}
 
-	return tpl.ExecuteTemplate(dst, "page.html", &pageLayout)
+	return rd.executeTemplate(tpl, dst, "page.html", &pageLayout)
 }
 
 // RenderPost renders post template.
@@ -327,7 +331,7 @@ func (rd Renderer) RenderPost(post, olderPost, newerPost model.Post, dst io.Writ
 		return err
 	}
 
-	return tpl.ExecuteTemplate(dst, "post.html", &postLayout)
+	return rd.executeTemplate(tpl, dst, "post.html", &postLayout)
 }
 
 func (rd Renderer) validateConfig() error {
@@ -381,4 +385,26 @@ func (rd Renderer) getListPosts(posts []model.Post, pageNumber int) []model.Post
 	}
 
 	return posts[start:end]
+}
+
+func (rd Renderer) executeTemplate(tpl *template.Template, w io.Writer, name string, data interface{}) error {
+	if !rd.Minimize {
+		return tpl.ExecuteTemplate(w, name, data)
+	}
+
+	var buff bytes.Buffer
+	err := tpl.ExecuteTemplate(&buff, name, data)
+	if err != nil {
+		return err
+	}
+
+	minifier := minify.New()
+	minifier.Add("text/html", &html.Minifier{
+		KeepDefaultAttrVals: true,
+		KeepWhitespace:      true,
+		KeepEndTags:         true,
+		KeepDocumentTags:    true,
+	})
+
+	return minifier.Minify("text/html", w, &buff)
 }
