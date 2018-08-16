@@ -13,8 +13,6 @@ type Layout struct {
 	ContentTitle  string
 	ContentDesc   string
 	ContentAuthor string
-	Tags          []model.Group
-	Categories    []model.Group
 	Pages         []model.Page
 }
 
@@ -25,6 +23,8 @@ type List struct {
 	Type        ListType
 	Path        string
 	Posts       []model.Post
+	Tags        []model.Group
+	Categories  []model.Group
 	CurrentPage int
 	MaxPage     int
 }

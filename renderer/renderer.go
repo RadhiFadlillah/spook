@@ -79,8 +79,6 @@ func (rd Renderer) RenderFrontPage(pageNumber int, dst io.Writer) error {
 		ContentTitle:  rd.Config.Title,
 		ContentDesc:   rd.Config.Description,
 		ContentAuthor: rd.Config.Owner,
-		Categories:    rd.Categories,
-		Tags:          rd.Tags,
 		Pages:         rd.Pages,
 	}
 
@@ -90,6 +88,8 @@ func (rd Renderer) RenderFrontPage(pageNumber int, dst io.Writer) error {
 		CurrentPage: pageNumber,
 		MaxPage:     rd.getMaxPagination(rd.Posts),
 		Posts:       rd.getListPosts(rd.Posts, pageNumber),
+		Categories:  rd.Categories,
+		Tags:        rd.Tags,
 	}
 
 	// Execute templates
@@ -162,8 +162,6 @@ func (rd Renderer) RenderList(listType ListType, groupName string, pageNumber in
 		WebsiteOwner: rd.Config.Owner,
 		ContentTitle: groupName,
 		ContentDesc:  rd.Config.Description,
-		Categories:   rd.Categories,
-		Tags:         rd.Tags,
 		Pages:        rd.Pages,
 	}
 
@@ -221,7 +219,7 @@ func (rd Renderer) RenderPage(page model.Page, dst io.Writer) error {
 	}
 
 	content = removeMetadata(content)
-	html := blackfriday.Run(content)
+	htmlContent := blackfriday.Run(content)
 
 	// Prepare layout
 	baseLayout := Layout{
@@ -229,15 +227,13 @@ func (rd Renderer) RenderPage(page model.Page, dst io.Writer) error {
 		WebsiteOwner: rd.Config.Owner,
 		ContentTitle: page.Title,
 		ContentDesc:  page.Excerpt,
-		Categories:   rd.Categories,
-		Tags:         rd.Tags,
 		Pages:        rd.Pages,
 	}
 
 	pageLayout := Page{
 		Layout:    baseLayout,
 		Thumbnail: page.Thumbnail,
-		HTML:      template.HTML(html),
+		HTML:      template.HTML(htmlContent),
 	}
 
 	// Execute templates
@@ -310,8 +306,6 @@ func (rd Renderer) RenderPost(post, olderPost, newerPost model.Post, dst io.Writ
 		ContentTitle:  post.Title,
 		ContentDesc:   post.Excerpt,
 		ContentAuthor: post.Author,
-		Categories:    rd.Categories,
-		Tags:          rd.Tags,
 		Pages:         rd.Pages,
 	}
 
