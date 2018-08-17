@@ -217,8 +217,8 @@ func cmdNewPostHandler(cmd *cobra.Command, args []string) {
 
 	// Create unique directory name with max length 100 character
 	now := time.Now()
-	dirPath := now.Format("2006-01-02-")
-	dirPath += createDirName(title, "post", 100)
+	title = now.Format("2006-01-02-") + title
+	dirPath := createDirName(title, "post", 100)
 
 	// Create new directory and index file for the page
 	os.MkdirAll(dirPath, os.ModePerm)
