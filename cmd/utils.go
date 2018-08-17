@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/url"
 	"os"
 	fp "path/filepath"
@@ -77,6 +78,124 @@ func openConfigFile(checkTheme bool) (model.Config, error) {
 	}
 
 	return config, nil
+}
+
+func copyFile(src, dst string, force bool) error {
+	src = fp.Clean(src)
+	dst = fp.Clean(dst)
+
+	// Open source file
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	// Create target file
+	err = os.MkdirAll(fp.Dir(dst), os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	dstFlag := os.O_RDWR | os.O_CREATE
+	if force {
+		dstFlag = dstFlag | os.O_TRUNC
+	}
+
+	dstFile, err := os.OpenFile(dst, dstFlag, os.ModePerm)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	// Copy file
+	_, err = io.Copy(dstFile, srcFile)
+	if err != nil {
+		return err
+	}
+
+	return dstFile.Sync()
+}
+
+func copyDir(src, dst string, force bool, excludedFiles ...string) error {
+	src = fp.Clean(src)
+	dst = fp.Clean(dst)
+
+	// Make sure src is directory
+	si, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
+	if !si.IsDir() {
+		return fmt.Errorf("Source is not a directory")
+	}
+
+	// Make sure destination is not exists (unless forced)
+	if force {
+		err = os.RemoveAll(dst)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = os.Stat(dst)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	if err == nil {
+		return fmt.Errorf("Destination already exists")
+	}
+
+	// Create destination directory
+	err = os.MkdirAll(dst, os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	entries, err := ioutil.ReadDir(src)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		srcPath := fp.Join(src, entry.Name())
+		dstPath := fp.Join(dst, entry.Name())
+
+		if entry.IsDir() {
+			err = copyDir(srcPath, dstPath, force, excludedFiles...)
+			if err != nil {
+				return err
+			}
+		} else {
+			// Skip symlinks.
+			if entry.Mode()&os.ModeSymlink != 0 {
+				continue
+			}
+
+			// Skip excluded files
+			isExcluded := false
+			for _, excluded := range excludedFiles {
+				if entry.Name() == excluded {
+					isExcluded = true
+					break
+				}
+			}
+
+			if isExcluded {
+				continue
+			}
+
+			// Copy file
+			err = copyFile(srcPath, dstPath, force)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func checkError(err error) {

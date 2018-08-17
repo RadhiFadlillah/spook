@@ -117,7 +117,7 @@ func (hdl *serverHandler) serveFrontPage(w http.ResponseWriter, r *http.Request,
 		Categories: categories,
 	}
 
-	err = rd.RenderFrontPage(1, w)
+	err = rd.RenderFrontPage(w)
 	checkError(err)
 }
 
@@ -161,7 +161,7 @@ func (hdl *serverHandler) serveListPage(w http.ResponseWriter, r *http.Request, 
 		groupName = ""
 	}
 
-	err = rd.RenderList(listType, groupName, pageNumber, w)
+	_, err = rd.RenderList(listType, groupName, pageNumber, w)
 	checkError(err)
 }
 

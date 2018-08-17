@@ -17,6 +17,6 @@ func NewSpookCmd() *cobra.Command {
 		Short: "Simple, minimalist and opinionated static site generator",
 	}
 
-	rootCmd.AddCommand(cmdNew, cmdServer)
+	rootCmd.AddCommand(cmdNew, cmdServer, cmdBuild)
 	return rootCmd
 }

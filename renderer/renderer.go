@@ -48,7 +48,7 @@ var funcsMap = template.FuncMap{
 // RenderFrontPage renders front page of the site.
 // If exists, it will use the front page template.
 // If not, it will fallback to using list template.
-func (rd Renderer) RenderFrontPage(pageNumber int, dst io.Writer) error {
+func (rd Renderer) RenderFrontPage(dst io.Writer) error {
 	// Make sure config file is valid
 	err := rd.validateConfig()
 	if err != nil {
@@ -89,9 +89,9 @@ func (rd Renderer) RenderFrontPage(pageNumber int, dst io.Writer) error {
 	frontPage := List{
 		Layout:      baseLayout,
 		Path:        "/posts",
-		CurrentPage: pageNumber,
+		CurrentPage: 1,
 		MaxPage:     rd.getMaxPagination(rd.Posts),
-		Posts:       rd.getListPosts(rd.Posts, pageNumber),
+		Posts:       rd.getListPosts(rd.Posts, 1),
 		Categories:  rd.Categories,
 		Tags:        rd.Tags,
 	}
@@ -106,23 +106,23 @@ func (rd Renderer) RenderFrontPage(pageNumber int, dst io.Writer) error {
 }
 
 // RenderList renders list template.
-func (rd Renderer) RenderList(listType ListType, groupName string, pageNumber int, dst io.Writer) error {
+func (rd Renderer) RenderList(listType ListType, groupName string, pageNumber int, dst io.Writer) (int, error) {
 	// Make sure config file is valid
 	err := rd.validateConfig()
 	if err != nil {
-		return err
+		return -1, err
 	}
 
 	// Prepare templates
 	themeDir := rd.Config.Theme
 	tplList := fp.Join(themeDir, "list.html")
 	if !fileExists(tplList) {
-		return fmt.Errorf("Template for list is not exist")
+		return -1, fmt.Errorf("Template for list is not exist")
 	}
 
 	templates, err := rd.getBaseTemplates()
 	if err != nil {
-		return err
+		return -1, err
 	}
 
 	templates = append(templates, tplList)
@@ -160,6 +160,17 @@ func (rd Renderer) RenderList(listType ListType, groupName string, pageNumber in
 		}
 	}
 
+	// Set minimum page number
+	if pageNumber < 1 {
+		pageNumber = 1
+	}
+
+	// Make sure page number <= max page
+	maxPagination := rd.getMaxPagination(posts)
+	if pageNumber > maxPagination {
+		return -1, nil
+	}
+
 	// Prepare layout
 	baseLayout := Layout{
 		WebsiteTitle: rd.Config.Title,
@@ -181,17 +192,22 @@ func (rd Renderer) RenderList(listType ListType, groupName string, pageNumber in
 		Type:        listType,
 		Path:        listPath,
 		CurrentPage: pageNumber,
-		MaxPage:     rd.getMaxPagination(posts),
+		MaxPage:     maxPagination,
 		Posts:       rd.getListPosts(posts, pageNumber),
 	}
 
 	// Execute templates
 	tpl, err := template.New("").Funcs(funcsMap).ParseFiles(templates...)
 	if err != nil {
-		return err
+		return -1, err
 	}
 
-	return rd.executeTemplate(tpl, dst, "list.html", &list)
+	err = rd.executeTemplate(tpl, dst, "list.html", &list)
+	if err != nil {
+		return -1, err
+	}
+
+	return len(posts), nil
 }
 
 // RenderPage renders page template.
