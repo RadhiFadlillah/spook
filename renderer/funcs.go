@@ -35,6 +35,11 @@ func limitSentence(src string, n int) string {
 		n = len(sentences)
 	}
 
-	result := strings.Join(sentences[:n], ".")
-	return src[:len(result)+1]
+	result := strings.Join(sentences[:n], ".") + "."
+	nWords := len(result)
+	if nWords > len(src) {
+		nWords = len(src)
+	}
+
+	return src[:nWords]
 }
