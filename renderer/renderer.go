@@ -14,7 +14,7 @@ import (
 	"github.com/RadhiFadlillah/spook/model"
 	"github.com/tdewolff/minify"
 	"github.com/tdewolff/minify/html"
-	blackfriday "gopkg.in/russross/blackfriday.v2"
+	bf "gopkg.in/russross/blackfriday.v2"
 )
 
 // ListType is the type of list that will be rendered.
@@ -27,6 +27,8 @@ const (
 	CATEGORY
 	// TAG means the list is list that only shows posts with specified tags.
 	TAG
+
+	mdExtensions = bf.CommonExtensions | bf.Footnotes | bf.AutoHeadingIDs | bf.HeadingIDs
 )
 
 // Renderer is used to render static HTML file
@@ -239,7 +241,7 @@ func (rd Renderer) RenderPage(page model.Page, dst io.Writer) error {
 	}
 
 	content = removeMetadata(content)
-	html := blackfriday.Run(content)
+	html := bf.Run(content, bf.WithExtensions(mdExtensions))
 
 	// Prepare layout
 	baseLayout := Layout{
@@ -317,7 +319,7 @@ func (rd Renderer) RenderPost(post, olderPost, newerPost model.Post, dst io.Writ
 	}
 
 	content = removeMetadata(content)
-	html := blackfriday.Run(content)
+	html := bf.Run(content, bf.WithExtensions(mdExtensions))
 
 	// Prepare layout
 	baseLayout := Layout{
