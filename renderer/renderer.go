@@ -242,6 +242,7 @@ func (rd Renderer) RenderPage(page model.Page, dst io.Writer) error {
 
 	content = removeMetadata(content)
 	html := bf.Run(content, bf.WithExtensions(mdExtensions))
+	html = highlightCode(html)
 
 	// Prepare layout
 	baseLayout := Layout{
@@ -320,6 +321,7 @@ func (rd Renderer) RenderPost(post, olderPost, newerPost model.Post, dst io.Writ
 
 	content = removeMetadata(content)
 	html := bf.Run(content, bf.WithExtensions(mdExtensions))
+	html = highlightCode(html)
 
 	// Prepare layout
 	baseLayout := Layout{

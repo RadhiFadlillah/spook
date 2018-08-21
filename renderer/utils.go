@@ -7,6 +7,12 @@ import (
 	"os"
 	fp "path/filepath"
 	"strings"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/alecthomas/chroma"
+	fhtml "github.com/alecthomas/chroma/formatters/html"
+	"github.com/alecthomas/chroma/lexers"
+	"github.com/alecthomas/chroma/styles"
 )
 
 // fileExists returns true if file in path is exist.
@@ -87,4 +93,41 @@ func isImageFile(path string) bool {
 	// Get mime type
 	mimeType := http.DetectContentType(buffer)
 	return strings.HasPrefix(mimeType, "image/")
+}
+
+// highlighCode highlights the code in generated HTML
+func highlightCode(html []byte) []byte {
+	r := bytes.NewReader(html)
+	doc, err := goquery.NewDocumentFromReader(r)
+	if err != nil {
+		return html
+	}
+
+	formatter := fhtml.New(fhtml.WithClasses())
+	doc.Find("pre>code").Each(func(_ int, cd *goquery.Selection) {
+		text := cd.Text()
+		text = strings.TrimSuffix(text, "\n")
+
+		lexer := lexers.Analyse(text)
+		if lexer == nil {
+			lexer = lexers.Fallback
+		}
+		lexer = chroma.Coalesce(lexer)
+
+		iterator, err := lexer.Tokenise(nil, text)
+		if err != nil {
+			return
+		}
+
+		output := bytes.Buffer{}
+		err = formatter.Format(&output, styles.Fallback, iterator)
+		cd.SetHtml(output.String())
+	})
+
+	newHTML, err := doc.Html()
+	if err != nil {
+		return html
+	}
+
+	return []byte(newHTML)
 }
