@@ -58,11 +58,13 @@ func cmdBuildHandler(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// Copy static directory
-	err = copyDir("static", fp.Join(dstDir, "static"), true)
-	if err != nil {
-		cError.Println("Error: Unable to copy static directory:", err)
-		return
+	// Copy static directory if it exists
+	if sd, err := os.Stat("static"); err == nil && sd.IsDir() {
+		err = copyDir("static", fp.Join(dstDir, "static"), true)
+		if err != nil {
+			cError.Println("Error: Unable to copy static directory:", err)
+			return
+		}
 	}
 
 	// Copy theme directory
