@@ -11,7 +11,7 @@ import (
 	fp "path/filepath"
 	"strings"
 
-	"github.com/RadhiFadlillah/spook/model"
+	"github.com/go-spook/spook/model"
 	"github.com/tdewolff/minify"
 	"github.com/tdewolff/minify/html"
 	bf "gopkg.in/russross/blackfriday.v2"

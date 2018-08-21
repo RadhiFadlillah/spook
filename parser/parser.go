@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/RadhiFadlillah/spook/model"
+	"github.com/go-spook/spook/model"
 	"github.com/sirupsen/logrus"
 	blackfriday "gopkg.in/russross/blackfriday.v2"
 )

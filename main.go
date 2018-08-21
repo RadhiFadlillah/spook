@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/RadhiFadlillah/spook/cmd"
+	"github.com/go-spook/spook/cmd"
 	"github.com/sirupsen/logrus"
 )
 

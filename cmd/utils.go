@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	"github.com/RadhiFadlillah/spook/model"
+	"github.com/go-spook/spook/model"
 )
 
 func isEmpty(dirPath string) bool {

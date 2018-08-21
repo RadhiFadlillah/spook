@@ -7,9 +7,9 @@ import (
 	fp "path/filepath"
 	"strings"
 
-	"github.com/RadhiFadlillah/spook/model"
-	"github.com/RadhiFadlillah/spook/parser"
-	"github.com/RadhiFadlillah/spook/renderer"
+	"github.com/go-spook/spook/model"
+	"github.com/go-spook/spook/parser"
+	"github.com/go-spook/spook/renderer"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )

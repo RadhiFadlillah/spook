@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/RadhiFadlillah/spook/model"
+	"github.com/go-spook/spook/model"
 	"github.com/spf13/cobra"
 )
 

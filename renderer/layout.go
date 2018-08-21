@@ -3,7 +3,7 @@ package renderer
 import (
 	"html/template"
 
-	"github.com/RadhiFadlillah/spook/model"
+	"github.com/go-spook/spook/model"
 )
 
 // Layout is the base layout of the website
