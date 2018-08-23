@@ -9,6 +9,7 @@ import (
 	"math"
 	"path"
 	fp "path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/go-spook/spook/model"
@@ -307,6 +308,11 @@ func (rd Renderer) RenderPost(post, olderPost, newerPost model.Post, dst io.Writ
 			Path: fp.Join("/", "tag", tag),
 		})
 	}
+
+	// Sort tags
+	sort.Slice(tags, func(i int, j int) bool {
+		return tags[i].Name < tags[j].Name
+	})
 
 	// Check author
 	if post.Author == "" {
