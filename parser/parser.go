@@ -37,7 +37,7 @@ func ParsePosts(config model.Config) (posts []model.Post, categories []model.Gro
 		itemDir := fp.Join("post", item.Name())
 		content, err := readIndexFile(itemDir)
 		if err != nil {
-			logrus.Errorf("Unable to read index file from %s, skipped", item.Name())
+			logrus.Errorf("Unable to read index file from %s: %s", item.Name(), err)
 			continue
 		}
 
@@ -45,7 +45,7 @@ func ParsePosts(config model.Config) (posts []model.Post, categories []model.Gro
 		post := model.Post{}
 		content, err = readMetadata(content, &post)
 		if err != nil {
-			logrus.Errorf("Unable to parse metadata from %s, skipped", item.Name())
+			logrus.WithError(err).Errorf("Unable to parse metadata from %s: %s", item.Name(), err)
 			continue
 		}
 
@@ -167,7 +167,7 @@ func ParsePages(config model.Config) (pages []model.Page, err error) {
 		itemDir := fp.Join("page", item.Name())
 		content, err := readIndexFile(itemDir)
 		if err != nil {
-			logrus.Errorf("Unable to read index file from %s, skipped", item.Name())
+			logrus.Errorf("Unable to read index file from %s: %s", item.Name(), err)
 			continue
 		}
 
@@ -175,7 +175,7 @@ func ParsePages(config model.Config) (pages []model.Page, err error) {
 		page := model.Page{}
 		content, err = readMetadata(content, &page)
 		if err != nil {
-			logrus.Errorf("Unable to parse metadata from %s, skipped", item.Name())
+			logrus.Errorf("Unable to parse metadata from %s: %s", item.Name(), err)
 			continue
 		}
 

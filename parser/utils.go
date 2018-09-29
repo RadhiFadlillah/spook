@@ -43,7 +43,7 @@ func readMetadata(content []byte, dst interface{}) ([]byte, error) {
 	// Parse metadata
 	_, err := toml.Decode(string(metadata), dst)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to parse metadata")
+		return nil, fmt.Errorf("Unable to parse metadata: %s", err)
 	}
 
 	return content, nil
