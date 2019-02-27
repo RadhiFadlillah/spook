@@ -189,6 +189,36 @@ func copyDir(src, dst string, force bool, excludedFiles ...string) error {
 	return nil
 }
 
+func removeDirContents(dirPath string) error {
+	dirItems, err := ioutil.ReadDir(dirPath)
+	if err != nil {
+		return err
+	}
+
+	for _, dirItem := range dirItems {
+		// Skip hidden file or directory (like .git)
+		if strings.HasPrefix(dirItem.Name(), ".") {
+			continue
+		}
+
+		dirItemPath := fp.Join(dirPath, dirItem.Name())
+		if dirItem.IsDir() {
+			err = removeDirContents(dirItemPath)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		err = os.Remove(dirItemPath)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func checkError(err error) {
 	if err != nil {
 		panic(err)

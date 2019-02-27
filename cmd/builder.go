@@ -50,13 +50,14 @@ func cmdBuildHandler(cmd *cobra.Command, args []string) {
 		dstDir = "public"
 	}
 
-	err = os.RemoveAll(dstDir)
+	// Make sure directory exists and clean it
+	err = os.MkdirAll(dstDir, os.ModePerm)
 	if err != nil {
 		cError.Println("Error:", err)
 		return
 	}
 
-	err = os.MkdirAll(dstDir, os.ModePerm)
+	err = removeDirContents(dstDir)
 	if err != nil {
 		cError.Println("Error:", err)
 		return
