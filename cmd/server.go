@@ -58,8 +58,10 @@ func cmdServerHandler(cmd *cobra.Command, args []string) {
 	router.GET("/category/:name/:n", hdl.serveListPage)
 	router.GET("/tag/:name", hdl.serveListPage)
 	router.GET("/tag/:name/:n", hdl.serveListPage)
-	router.GET("/page/:name", hdl.servePage)
-	router.GET("/post/:name", hdl.servePost)
+	router.GET("/page/:name", hdl.addSuffixSlash)
+	router.GET("/page/:name/*filepath", hdl.servePage)
+	router.GET("/post/:name", hdl.addSuffixSlash)
+	router.GET("/post/:name/*filepath", hdl.servePost)
 
 	// Route for panic
 	router.PanicHandler = func(w http.ResponseWriter, r *http.Request, arg interface{}) {
@@ -166,6 +168,14 @@ func (hdl *serverHandler) serveListPage(w http.ResponseWriter, r *http.Request, 
 }
 
 func (hdl *serverHandler) servePage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	pagePath := fp.Join("page", ps.ByName("name"))
+
+	if filepath := ps.ByName("filepath"); filepath != "" && filepath != "/" {
+		filepath = fp.Join(pagePath, filepath)
+		http.ServeFile(w, r, filepath)
+		return
+	}
+
 	// Open config file
 	config, err := openConfigFile(true)
 	checkError(err)
@@ -181,7 +191,7 @@ func (hdl *serverHandler) servePage(w http.ResponseWriter, r *http.Request, ps h
 	// Find the wanted page
 	page := model.Page{}
 	for i := 0; i < len(pages); i++ {
-		if pages[i].Path == r.URL.Path {
+		if pages[i].Path == "/"+pagePath {
 			page = pages[i]
 			page.Path = strings.TrimPrefix(page.Path, "/")
 			break
@@ -202,6 +212,14 @@ func (hdl *serverHandler) servePage(w http.ResponseWriter, r *http.Request, ps h
 }
 
 func (hdl *serverHandler) servePost(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	postPath := fp.Join("post", ps.ByName("name"))
+
+	if filepath := ps.ByName("filepath"); filepath != "" && filepath != "/" {
+		filepath = fp.Join(postPath, filepath)
+		http.ServeFile(w, r, filepath)
+		return
+	}
+
 	// Open config file
 	config, err := openConfigFile(true)
 	checkError(err)
@@ -217,7 +235,7 @@ func (hdl *serverHandler) servePost(w http.ResponseWriter, r *http.Request, ps h
 	// Find the wanted post
 	postIndex := -1
 	for i := 0; i < len(posts); i++ {
-		if posts[i].Path == r.URL.Path {
+		if posts[i].Path == "/"+postPath {
 			postIndex = i
 			break
 		}
@@ -252,4 +270,9 @@ func (hdl *serverHandler) servePost(w http.ResponseWriter, r *http.Request, ps h
 
 	err = rd.RenderPost(currentPost, olderPost, newerPost, w)
 	checkError(err)
+}
+
+func (hdl *serverHandler) addSuffixSlash(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	newPath := fp.Clean(r.URL.Path) + "/"
+	http.Redirect(w, r, newPath, 301)
 }
