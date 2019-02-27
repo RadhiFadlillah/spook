@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/url"
 	"os"
 	fp "path/filepath"
 	"strings"
@@ -63,14 +62,6 @@ func openConfigFile(checkTheme bool) (model.Config, error) {
 	_, err := toml.DecodeFile("config.toml", &config)
 	if err != nil {
 		return model.Config{}, err
-	}
-
-	if config.BaseURL == "" {
-		return model.Config{}, fmt.Errorf("No base URL set in configuration file")
-	}
-
-	if _, err = url.ParseRequestURI(config.BaseURL); err != nil {
-		return model.Config{}, fmt.Errorf("Base URL must be an absolute URL path")
 	}
 
 	if checkTheme && config.Theme == "" {

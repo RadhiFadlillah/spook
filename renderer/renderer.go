@@ -361,10 +361,6 @@ func (rd Renderer) RenderPost(post, olderPost, newerPost model.Post, dst io.Writ
 }
 
 func (rd Renderer) validateConfig() error {
-	if rd.Config.BaseURL == "" {
-		return fmt.Errorf("No base URL set in configuration file")
-	}
-
 	if rd.Config.Theme == "" {
 		return fmt.Errorf("No theme specified in configuration file")
 	}

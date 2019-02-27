@@ -5,7 +5,6 @@ type Config struct {
 	Title       string
 	Description string
 	Owner       string
-	BaseURL     string
 	Pagination  int
 	Theme       string
 	PublishDir  string

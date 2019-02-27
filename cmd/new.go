@@ -3,7 +3,6 @@ package cmd
 import (
 	"bufio"
 	"fmt"
-	"net/url"
 	"os"
 	fp "path/filepath"
 	"strings"
@@ -84,15 +83,6 @@ func cmdNewSiteHandler(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	cBold.Print("Base URL      : ")
-	tempBytes, _, _ = reader.ReadLine()
-
-	baseURL := string(tempBytes)
-	if _, err := url.ParseRequestURI(baseURL); err != nil {
-		cError.Println("Error: Base URL must be an absolute URL path")
-		return
-	}
-
 	cBold.Print("Website owner : ")
 	tempBytes, _, _ = reader.ReadLine()
 	owner := string(tempBytes)
@@ -114,7 +104,6 @@ func cmdNewSiteHandler(cmd *cobra.Command, args []string) {
 	defer configFile.Close()
 
 	err = toml.NewEncoder(configFile).Encode(&model.Config{
-		BaseURL:    baseURL,
 		Title:      title,
 		Owner:      owner,
 		Pagination: 10})
