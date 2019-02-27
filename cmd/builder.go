@@ -45,7 +45,11 @@ func cmdBuildHandler(cmd *cobra.Command, args []string) {
 	}
 
 	// Set destination directory
-	dstDir := "public"
+	dstDir := config.PublishDir
+	if dstDir == "" {
+		dstDir = "public"
+	}
+
 	err = os.RemoveAll(dstDir)
 	if err != nil {
 		cError.Println("Error:", err)
