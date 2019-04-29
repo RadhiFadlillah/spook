@@ -193,7 +193,7 @@ func buildList(rd renderer.Renderer, dstDir string, listType renderer.ListType, 
 			return fmt.Errorf("Unable to create file for list of posts: %v", err)
 		}
 
-		nPosts, err := rd.RenderList(listType, "", i, f)
+		nPosts, err := rd.RenderList(listType, groupName, i, f)
 		if err != nil {
 			f.Close()
 			return fmt.Errorf("Unable to build list of posts: %v", err)
