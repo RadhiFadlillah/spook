@@ -201,6 +201,11 @@ func removeDirContents(dirPath string) error {
 			continue
 		}
 
+		// Skip CNAME as well, since it's used for Github pages
+		if strings.ToLower(dirItem.Name()) == "cname" {
+			continue
+		}
+
 		dirItemPath := fp.Join(dirPath, dirItem.Name())
 		if dirItem.IsDir() {
 			err = removeDirContents(dirItemPath)
