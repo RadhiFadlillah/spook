@@ -17,7 +17,7 @@ import (
 
 // fileExists returns true if file in path is exist.
 func fileExists(path string) bool {
-	if f, err := os.Stat(path); err == nil && f.Size() > 0 {
+	if f, err := os.Stat(path); err == nil && !f.IsDir() && f.Size() > 0 {
 		return true
 	}
 
@@ -95,7 +95,7 @@ func isImageFile(path string) bool {
 	return strings.HasPrefix(mimeType, "image/")
 }
 
-// highlighCode highlights the code in generated HTML
+// highlightCode highlights the code in generated HTML
 func highlightCode(html []byte) []byte {
 	r := bytes.NewReader(html)
 	doc, err := goquery.NewDocumentFromReader(r)

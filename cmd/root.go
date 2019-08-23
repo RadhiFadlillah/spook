@@ -10,13 +10,13 @@ var (
 	cError = color.New(color.FgHiRed)
 )
 
-// NewSpookCmd creates new command for spook
-func NewSpookCmd() *cobra.Command {
-	rootCmd := &cobra.Command{
+// SpookCmd creates new command for spook
+func SpookCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "spook",
 		Short: "Simple, minimalist and opinionated static site generator",
 	}
 
-	rootCmd.AddCommand(cmdNew, cmdServer, cmdBuild)
-	return rootCmd
+	cmd.AddCommand(newCmd(), serveCmd(), buildCmd())
+	return cmd
 }

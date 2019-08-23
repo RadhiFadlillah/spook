@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/PuerkitoBio/goquery"
+	blackfriday "gopkg.in/russross/blackfriday.v2"
 )
 
 // readIndexFile reads content of _index.md file in specified directory
@@ -91,4 +93,17 @@ func isImageFile(path string) bool {
 	// Get mime type
 	mimeType := http.DetectContentType(buffer)
 	return strings.HasPrefix(mimeType, "image/")
+}
+
+// getFirstParagraph fetch the first paragraph from a markdown content.
+// It will be used as default excerpt if user doesn't specify it.
+func getFirstParagraph(content []byte) string {
+	html := blackfriday.Run(content)
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(html))
+	if err != nil {
+		return ""
+	}
+
+	p := doc.Find("p").First().Text()
+	return strings.Join(strings.Fields(p), " ")
 }

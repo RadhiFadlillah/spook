@@ -40,6 +40,7 @@ type Renderer struct {
 	Tags       []model.Group
 	Categories []model.Group
 	Minimize   bool
+	RootDir    string
 }
 
 var funcsMap = template.FuncMap{
@@ -59,7 +60,7 @@ func (rd Renderer) RenderFrontPage(dst io.Writer) error {
 	}
 
 	// Prepare templates
-	themeDir := rd.Config.Theme
+	themeDir := fp.Join(rd.RootDir, "theme", rd.Config.Theme)
 	tplList := fp.Join(themeDir, "list.html")
 	tplFrontPage := fp.Join(themeDir, "frontpage.html")
 
@@ -117,7 +118,7 @@ func (rd Renderer) RenderList(listType ListType, groupName string, pageNumber in
 	}
 
 	// Prepare templates
-	themeDir := rd.Config.Theme
+	themeDir := fp.Join(rd.RootDir, "theme", rd.Config.Theme)
 	tplList := fp.Join(themeDir, "list.html")
 	if !fileExists(tplList) {
 		return -1, fmt.Errorf("Template for list is not exist")
@@ -222,7 +223,7 @@ func (rd Renderer) RenderPage(page model.Page, dst io.Writer) error {
 	}
 
 	// Prepare templates
-	themeDir := rd.Config.Theme
+	themeDir := fp.Join(rd.RootDir, "theme", rd.Config.Theme)
 	tplPage := fp.Join(themeDir, "page.html")
 	if !fileExists(tplPage) {
 		return fmt.Errorf("Template for page is not exist")
@@ -278,7 +279,7 @@ func (rd Renderer) RenderPost(post, olderPost, newerPost model.Post, dst io.Writ
 	}
 
 	// Prepare templates
-	themeDir := rd.Config.Theme
+	themeDir := fp.Join(rd.RootDir, "theme", rd.Config.Theme)
 	tplPost := fp.Join(themeDir, "post.html")
 	if !fileExists(tplPost) {
 		return fmt.Errorf("Template for post is not exist")
@@ -360,6 +361,7 @@ func (rd Renderer) RenderPost(post, olderPost, newerPost model.Post, dst io.Writ
 	return rd.executeTemplate(tpl, dst, "post.html", &postLayout)
 }
 
+// validateConfig verifies that the config file is valid.
 func (rd Renderer) validateConfig() error {
 	if rd.Config.Theme == "" {
 		return fmt.Errorf("No theme specified in configuration file")
@@ -368,8 +370,12 @@ func (rd Renderer) validateConfig() error {
 	return nil
 }
 
+// getBaseTemplates fetch list of base templates that used in the theme.
+// The base template is all HTML that prefixed with underscore character,
+// e.g _footer.html, _header.html, etc.
 func (rd Renderer) getBaseTemplates() ([]string, error) {
-	items, err := ioutil.ReadDir(rd.Config.Theme)
+	themeDir := fp.Join(rd.RootDir, "theme", rd.Config.Theme)
+	items, err := ioutil.ReadDir(themeDir)
 	if err != nil {
 		return []string{}, err
 	}
@@ -381,13 +387,14 @@ func (rd Renderer) getBaseTemplates() ([]string, error) {
 		}
 
 		if strings.HasSuffix(item.Name(), ".html") && strings.HasPrefix(item.Name(), "_") {
-			templates = append(templates, fp.Join(rd.Config.Theme, item.Name()))
+			templates = append(templates, fp.Join(themeDir, item.Name()))
 		}
 	}
 
 	return templates, nil
 }
 
+// getMaxPagination calculates the max page number following the configuration.
 func (rd Renderer) getMaxPagination(posts []model.Post) int {
 	nPosts := len(posts)
 	pageLength := rd.Config.Pagination
@@ -396,6 +403,7 @@ func (rd Renderer) getMaxPagination(posts []model.Post) int {
 	return int(fMaxPage)
 }
 
+// getListPosts fetch the list of post to display in specified page number.
 func (rd Renderer) getListPosts(posts []model.Post, pageNumber int) []model.Post {
 	nPosts := len(posts)
 	pageLength := rd.Config.Pagination
@@ -409,6 +417,7 @@ func (rd Renderer) getListPosts(posts []model.Post, pageNumber int) []model.Post
 	return posts[start:end]
 }
 
+// executeTemplate executes template into HTML, and minimize it if needed
 func (rd Renderer) executeTemplate(tpl *template.Template, w io.Writer, name string, data interface{}) error {
 	if !rd.Minimize {
 		return tpl.ExecuteTemplate(w, name, data)

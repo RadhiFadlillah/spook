@@ -6,8 +6,7 @@ import (
 )
 
 func main() {
-	spookCmd := cmd.NewSpookCmd()
-	if err := spookCmd.Execute(); err != nil {
+	if err := cmd.SpookCmd().Execute(); err != nil {
 		logrus.Fatalln(err)
 	}
 }

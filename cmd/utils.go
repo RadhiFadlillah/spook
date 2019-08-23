@@ -12,6 +12,7 @@ import (
 	"github.com/go-spook/spook/model"
 )
 
+// isEmpty checks if a directory is empty or not.
 func isEmpty(dirPath string) bool {
 	dir, err := os.Open(dirPath)
 	if err != nil {
@@ -27,36 +28,53 @@ func isEmpty(dirPath string) bool {
 	return true
 }
 
-func createFile(path string) {
-	f, _ := os.Create(path)
-	defer f.Close()
+// dirExists returns true if directory in specified path is exist.
+func dirExists(path string) bool {
+	if f, err := os.Stat(path); err == nil && f.IsDir() {
+		return true
+	}
+
+	return false
 }
 
-func createDirName(name string, dst string, wordLimit int) string {
-	dirPath := ""
+// createFile creates empty file in specified path
+func createFile(path string) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
 
-	// Format name and limit words
+	return f.Close()
+}
+
+// createDirName creates a unique dir name with limited character count
+func createDirName(name string, dstDir string, charLimit int) string {
+	// Create dir name in lowercase
+	dirName := ""
 	for _, word := range strings.Fields(name) {
-		dirPath += strings.ToLower(word) + "-"
-		if len(dirPath) >= wordLimit {
+		dirName += strings.ToLower(word) + "-"
+		if len(dirName) >= charLimit {
 			break
 		}
 	}
+	dirName = strings.TrimSuffix(dirName, "-")
 
-	// Make sure it's unique
-	dirPath = fp.Join(dst, dirPath[:len(dirPath)-1])
+	// Make sure it's unique compared to its sibling in dst dir
 	for {
-		if info, err := os.Stat(dirPath); err == nil && info.IsDir() {
-			dirPath += "-1"
+		dirPath := fp.Join(dstDir, dirName)
+		if dirExists(dirPath) {
+			dirName += "-1"
 			continue
-		} else {
-			break
 		}
+
+		break
 	}
 
-	return dirPath
+	return dirName
 }
 
+// openConfigFile opens config file in current working directory.
+// If needed, it will also check if theme specified in config file.
 func openConfigFile(checkTheme bool) (model.Config, error) {
 	config := model.Config{}
 	_, err := toml.DecodeFile("config.toml", &config)
@@ -65,13 +83,13 @@ func openConfigFile(checkTheme bool) (model.Config, error) {
 	}
 
 	if checkTheme && config.Theme == "" {
-		return model.Config{}, fmt.Errorf("No theme specified in configuration file")
+		return model.Config{}, fmt.Errorf("no theme specified in config file")
 	}
 
 	return config, nil
 }
 
-func copyFile(src, dst string, force bool) error {
+func copyFile(src, dst string) error {
 	src = fp.Clean(src)
 	dst = fp.Clean(dst)
 
@@ -88,11 +106,7 @@ func copyFile(src, dst string, force bool) error {
 		return err
 	}
 
-	dstFlag := os.O_RDWR | os.O_CREATE
-	if force {
-		dstFlag = dstFlag | os.O_TRUNC
-	}
-
+	dstFlag := os.O_RDWR | os.O_CREATE | os.O_TRUNC
 	dstFile, err := os.OpenFile(dst, dstFlag, os.ModePerm)
 	if err != nil {
 		return err
@@ -108,7 +122,7 @@ func copyFile(src, dst string, force bool) error {
 	return dstFile.Sync()
 }
 
-func copyDir(src, dst string, force bool, excludedFiles ...string) error {
+func copyDir(src, dst string, excludedFiles ...string) error {
 	src = fp.Clean(src)
 	dst = fp.Clean(dst)
 
@@ -122,29 +136,18 @@ func copyDir(src, dst string, force bool, excludedFiles ...string) error {
 		return fmt.Errorf("Source is not a directory")
 	}
 
-	// Make sure destination is not exists (unless forced)
-	if force {
-		err = os.RemoveAll(dst)
-		if err != nil {
-			return err
-		}
-	}
-
-	_, err = os.Stat(dst)
-	if err != nil && !os.IsNotExist(err) {
+	// Remove target directory, then recreate it
+	err = os.RemoveAll(dst)
+	if err != nil {
 		return err
 	}
 
-	if err == nil {
-		return fmt.Errorf("Destination already exists")
-	}
-
-	// Create destination directory
 	err = os.MkdirAll(dst, os.ModePerm)
 	if err != nil {
 		return err
 	}
 
+	// Copy each file and subdirectories
 	entries, err := ioutil.ReadDir(src)
 	if err != nil {
 		return err
@@ -155,7 +158,7 @@ func copyDir(src, dst string, force bool, excludedFiles ...string) error {
 		dstPath := fp.Join(dst, entry.Name())
 
 		if entry.IsDir() {
-			err = copyDir(srcPath, dstPath, force, excludedFiles...)
+			err = copyDir(srcPath, dstPath, excludedFiles...)
 			if err != nil {
 				return err
 			}
@@ -179,7 +182,7 @@ func copyDir(src, dst string, force bool, excludedFiles ...string) error {
 			}
 
 			// Copy file
-			err = copyFile(srcPath, dstPath, force)
+			err = copyFile(srcPath, dstPath)
 			if err != nil {
 				return err
 			}

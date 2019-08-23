@@ -7,7 +7,6 @@ type Config struct {
 	Owner       string
 	Pagination  int
 	Theme       string
-	PublishDir  string
 }
 
 // Group is keyword for grouping several posts

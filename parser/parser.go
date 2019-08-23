@@ -1,30 +1,51 @@
 package parser
 
 import (
-	"bytes"
+	"fmt"
 	"io/ioutil"
 	fp "path/filepath"
 	"sort"
 	"strings"
 	"time"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/go-spook/spook/model"
-	"github.com/sirupsen/logrus"
-	blackfriday "gopkg.in/russross/blackfriday.v2"
 )
 
-// ParsePosts parse all posts inside the post directory
-func ParsePosts(config model.Config) (posts []model.Post, categories []model.Group, tags []model.Group, err error) {
-	logrus.Infoln("Start parsing blog posts")
+// Parser is used to parse markdown files to get the posts,
+// pages, categories and tags that used in the blog.
+type Parser struct {
+	Config  model.Config
+	RootDir string
+}
 
-	// Scan and parse all posts
-	dirItems, err := ioutil.ReadDir("post")
+// ParsedPosts is the output from ParsePosts
+type ParsedPosts struct {
+	Posts      []model.Post
+	Categories []model.Group
+	Tags       []model.Group
+}
+
+// ParsePosts parse all posts inside the post directory.
+// Returns all posts, also categories and tags that used in the posts.
+func (ps Parser) ParsePosts() (output ParsedPosts, err error) {
+	// The valid posts must be structured like this :
+	// <root-dir>
+	// `-- post
+	//     |-- 2006-02-03-post-name-1
+	//     |   |-- _index.md
+	//     |   |-- _thumbnail.jpg
+	//     |   |-- image.jpg
+	//     |   `-- sample.txt
+	//     `-- 2006-02-03-post-name-2
+
+	// Scan and parse all posts.
+	postDir := fp.Join(ps.RootDir, "post")
+	dirItems, err := ioutil.ReadDir(postDir)
 	if err != nil {
-		return nil, nil, nil, err
+		return output, fmt.Errorf("failed to scan post dir: %s", err)
 	}
 
-	posts = []model.Post{}
+	posts := []model.Post{}
 	mapTag := map[string]int{}
 	mapCategory := map[string]int{}
 
@@ -34,25 +55,22 @@ func ParsePosts(config model.Config) (posts []model.Post, categories []model.Gro
 		}
 
 		// Open and read index file
-		itemDir := fp.Join("post", item.Name())
+		itemDir := fp.Join(postDir, item.Name())
 		content, err := readIndexFile(itemDir)
 		if err != nil {
-			logrus.Errorf("Unable to read index file from %s: %s", item.Name(), err)
-			continue
+			return output, fmt.Errorf("failed to read index file for %s: %s", item.Name(), err)
 		}
 
 		// Split metadata and content
 		post := model.Post{}
 		content, err = readMetadata(content, &post)
 		if err != nil {
-			logrus.WithError(err).Errorf("Unable to parse metadata from %s: %s", item.Name(), err)
-			continue
+			return output, fmt.Errorf("failed to parse metadata for %s: %s", item.Name(), err)
 		}
 
 		// Make sure title is not empty
 		if post.Title == "" {
-			logrus.Errorf("Title is not defined in %s, skipped", item.Name())
-			continue
+			return output, fmt.Errorf("title is not defined in %s", item.Name())
 		}
 
 		// Make sure date time format is correct
@@ -61,17 +79,15 @@ func ParsePosts(config model.Config) (posts []model.Post, categories []model.Gro
 		}
 
 		if _, err = time.Parse("2006-01-02 15:04:05 -0700", post.CreatedAt); err != nil {
-			logrus.Errorf("Unable to parse date time from %s, skipped", item.Name())
-			continue
+			return output, fmt.Errorf("failed to parse create time for %s: %s", item.Name(), err)
 		}
 
 		if _, err = time.Parse("2006-01-02 15:04:05 -0700", post.UpdatedAt); err != nil {
-			logrus.Errorf("Unable to parse date time from %s, skipped", item.Name())
-			continue
+			return output, fmt.Errorf("failed to parse update time for %s: %s", item.Name(), err)
 		}
 
 		// Set post's path
-		post.Path = fp.Join("/", itemDir)
+		post.Path = fp.Join("/", "post", item.Name())
 
 		// Get post's thumbnail
 		thumbnailName := getThumbnailFile(itemDir)
@@ -81,12 +97,7 @@ func ParsePosts(config model.Config) (posts []model.Post, categories []model.Gro
 
 		// If it doesn't have any excerpt, pick the first paragraph
 		if post.Excerpt == "" {
-			html := blackfriday.Run(content)
-			doc, err := goquery.NewDocumentFromReader(bytes.NewReader(html))
-			if err == nil {
-				p := doc.Find("p").First().Text()
-				post.Excerpt = strings.Join(strings.Fields(p), " ")
-			}
+			post.Excerpt = getFirstParagraph(content)
 		}
 
 		// Save parse result
@@ -105,7 +116,7 @@ func ParsePosts(config model.Config) (posts []model.Post, categories []model.Gro
 	}
 
 	// Convert map category and tag to slice
-	categories = []model.Group{}
+	categories := []model.Group{}
 	for category, n := range mapCategory {
 		pathName := category
 		if pathName == "" {
@@ -119,7 +130,7 @@ func ParsePosts(config model.Config) (posts []model.Post, categories []model.Gro
 		})
 	}
 
-	tags = []model.Group{}
+	tags := []model.Group{}
 	for tag, n := range mapTag {
 		tags = append(tags, model.Group{
 			Name:   tag,
@@ -129,64 +140,74 @@ func ParsePosts(config model.Config) (posts []model.Post, categories []model.Gro
 	}
 
 	// Sort list category, tag and post
-	logrus.Println("Sorting posts")
 	sort.Slice(posts, func(i int, j int) bool {
 		iTime, _ := time.Parse("2006-01-02 15:04:05 -0700", posts[i].UpdatedAt)
 		jTime, _ := time.Parse("2006-01-02 15:04:05 -0700", posts[j].UpdatedAt)
 		return iTime.After(jTime)
 	})
 
-	logrus.Println("Sorting categories")
 	sort.Slice(categories, func(i int, j int) bool {
 		return categories[i].Name < categories[j].Name
 	})
 
-	logrus.Println("Sorting tags")
 	sort.Slice(tags, func(i int, j int) bool {
 		return tags[i].Name < tags[j].Name
 	})
 
 	// Finished
-	logrus.Println("Finished parsing all posts")
-	return posts, categories, tags, nil
+	output = ParsedPosts{
+		Posts:      posts,
+		Categories: categories,
+		Tags:       tags,
+	}
+
+	return output, nil
 }
 
 // ParsePages parse all pages inside the page directory
-func ParsePages(config model.Config) (pages []model.Page, err error) {
-	logrus.Infoln("Start parsing pages")
+func (ps Parser) ParsePages() (pages []model.Page, err error) {
+	// The valid pages must be structured like this :
+	// <root-dir>
+	// `-- page
+	//     |-- page-1
+	//     |   |-- _index.md
+	//     |   `-- _thumbnail.jpg
+	//     `-- page-2
 
 	// Scan and parse all pages
-	dirItems, err := ioutil.ReadDir("page")
+	pageDir := fp.Join(ps.RootDir, "page")
+	dirItems, err := ioutil.ReadDir(pageDir)
 	if err != nil {
 		return nil, err
 	}
 
 	pages = []model.Page{}
 	for _, item := range dirItems {
+		if !item.IsDir() {
+			continue
+		}
+
 		// Open and read index file
-		itemDir := fp.Join("page", item.Name())
+		itemDir := fp.Join(pageDir, item.Name())
 		content, err := readIndexFile(itemDir)
 		if err != nil {
-			logrus.Errorf("Unable to read index file from %s: %s", item.Name(), err)
-			continue
+			return pages, fmt.Errorf("failed to read index file for %s: %s", item.Name(), err)
 		}
 
 		// Split metadata and content
 		page := model.Page{}
 		content, err = readMetadata(content, &page)
 		if err != nil {
-			logrus.Errorf("Unable to parse metadata from %s: %s", item.Name(), err)
-			continue
+			return pages, fmt.Errorf("failed to parse metadata for %s: %s", item.Name(), err)
 		}
 
 		// Make sure title is not empty
 		if page.Title == "" {
-			logrus.Errorf("Title is not defined in %s, skipped", item.Name())
-			continue
+			return pages, fmt.Errorf("title is not defined in %s", item.Name())
 		}
 
 		// Set page's path
-		page.Path = fp.Join("/", itemDir)
+		page.Path = fp.Join("/", "page", item.Name())
 
 		// Get page's thumbnail
 		thumbnailName := getThumbnailFile(itemDir)
@@ -196,12 +217,7 @@ func ParsePages(config model.Config) (pages []model.Page, err error) {
 
 		// If it doesn't have any excerpt, pick the first paragraph
 		if page.Excerpt == "" {
-			html := blackfriday.Run(content)
-			doc, err := goquery.NewDocumentFromReader(bytes.NewReader(html))
-			if err == nil {
-				p := doc.Find("p").First().Text()
-				page.Excerpt = strings.Join(strings.Fields(p), " ")
-			}
+			page.Excerpt = getFirstParagraph(content)
 		}
 
 		// Save parse result
@@ -209,12 +225,10 @@ func ParsePages(config model.Config) (pages []model.Page, err error) {
 	}
 
 	// Sort list page
-	logrus.Println("Sorting pages")
 	sort.Slice(pages, func(i int, j int) bool {
 		return pages[i].Title < pages[j].Title
 	})
 
 	// Finished
-	logrus.Println("Finished parsing all pages")
 	return pages, nil
 }
