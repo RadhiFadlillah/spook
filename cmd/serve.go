@@ -46,5 +46,9 @@ func serveHandler(cmd *cobra.Command, args []string) {
 
 	// Start server
 	logrus.Printf("Serve spook in :%d\n", port)
-	webserver.Start(rootDir, config, port)
+	err = webserver.Start(rootDir, config, port)
+	if err != nil {
+		cError.Println("Failed to start server:", err)
+		return
+	}
 }
