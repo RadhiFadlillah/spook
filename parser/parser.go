@@ -141,8 +141,8 @@ func (ps Parser) ParsePosts() (output ParsedPosts, err error) {
 
 	// Sort list category, tag and post
 	sort.Slice(posts, func(i int, j int) bool {
-		iTime, _ := time.Parse("2006-01-02 15:04:05 -0700", posts[i].UpdatedAt)
-		jTime, _ := time.Parse("2006-01-02 15:04:05 -0700", posts[j].UpdatedAt)
+		iTime, _ := time.Parse("2006-01-02 15:04:05 -0700", posts[i].CreatedAt)
+		jTime, _ := time.Parse("2006-01-02 15:04:05 -0700", posts[j].CreatedAt)
 		return iTime.After(jTime)
 	})
 
